@@ -1,0 +1,52 @@
+QPlainTextEdit {
+    color: grey;
+    background-color: #ffffff;
+    selection-color: yellow;
+    selection-background-color: blue;
+    /* background-image: url(draft.png); */
+    background-attachment: fixed;
+}
+
+/* Status bar background color */
+QStatusBar {
+    background: #eeeeee;
+}
+
+/* Current mode */
+QStatusBar QLabel#mode {
+    padding: 2px 6px 2px 6px;
+    background: #ccccff;
+    font-family: PT Mono;
+}
+
+QScrollBar:vertical {
+    border: 2px solid #ccccff;
+    background: #ffffff;
+    width: 10px;
+    margin: 14px 0 14px 0;
+}
+QScrollBar::handle:vertical {
+    background: #ccccff;
+    min-height: 20px;
+}
+QScrollBar::add-line:vertical {
+    border: 2px solid #ccccff;
+    background: #ccccff;
+    height: 10px;
+    subcontrol-position: bottom;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::sub-line:vertical {
+    border: 2px solid #ccccff;
+    background: #ccccff;
+    height: 10px;
+    subcontrol-position: top;
+    subcontrol-origin: margin;
+}
+QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
