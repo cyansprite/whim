@@ -8,7 +8,6 @@
 
 class QPaintEvent;
 class QResizeEvent;
-class QFocusEvent;
 class QSize;
 class QWidget;
 class LineNr;
@@ -18,15 +17,13 @@ class CodeEditor : public QPlainTextEdit
     Q_OBJECT
 
     public:
-        CodeEditor(QDockWidget* parent = 0);
+        CodeEditor(QWidget* parent = 0);
 
         void lineNrPaintEvent(QPaintEvent* event);
         int lineNrAreaWidth();
 
-        // TODO trimming
         void setFilename(QString filename){
             _filename = filename;
-            _parent->setWindowTitle(filename);
         }
 
         QString getFilename(){
@@ -43,7 +40,6 @@ class CodeEditor : public QPlainTextEdit
     protected:
         void resizeEvent(QResizeEvent* event);
         void focusInEvent(QFocusEvent* event);
-        // void focusOutEvent(QFocusEvent* e);
 
     private slots:
         void padForLineNr(int newBlockCount);
@@ -51,7 +47,6 @@ class CodeEditor : public QPlainTextEdit
         void updateLineNr(const QRect &, int);
 
     private:
-        QDockWidget* _parent;
         int _active;
         int _paddingFromLineNr;
 

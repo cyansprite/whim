@@ -5,7 +5,8 @@
 #include <QLabel>
 #include <QList>
 
-#include "CodeEditor.h"
+// #include "CodeEditor.h"
+#include "CodeDock.h"
 
 class QTextEdit;
 
@@ -16,28 +17,27 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow() {
-        while (!_editors.isEmpty())
-            delete _editors.takeFirst(); 
+        while (!_docks.isEmpty())
+            delete _docks.takeFirst();
     }
 
 public slots:
     void about();
     void save();
-    void saveas();
     void newFile();
     void openFileDialog();
 
 private:
-    CodeEditor* setupEditor(QString filename, Qt::DockWidgetArea area);
-    CodeEditor* getActiveEditor();
+    void setupEditor(QString filename, Qt::DockWidgetArea area);
+    CodeDock* getActiveDock();
     void setupFileMenu();
     void setupHelpMenu();
     void createStatusBar();
-    void openFileInEditor(const QString &path, CodeEditor* editor);
+    void openFileInEditor(const QString &path, CodeDock* editor);
     int _id;
 
-    QList<CodeEditor*> _editors;
-    CodeEditor* _activeEditor;
+    QList<CodeDock*> _docks;
+    // CodeEditor* _activeEditor;
 
     QLabel* _modeWidget;
 };

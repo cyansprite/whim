@@ -5,8 +5,7 @@
 
 int CodeEditor::ActiveCount = 0;
 
-CodeEditor::CodeEditor(QDockWidget* parent) : QPlainTextEdit(parent),
-    _parent(parent),
+CodeEditor::CodeEditor(QWidget* parent) : QPlainTextEdit(parent),
     _active(CodeEditor::ActiveCount),
     _paddingFromLineNr(3)
 {

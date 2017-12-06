@@ -7,7 +7,6 @@ MainWindow::MainWindow(QWidget *parent)
 {
     _id = -1;
     // Window handles TODO CONFIGCONFIG
-    // TODO Make editor inside of QDockWidget? sounds like a nice feat.
     setupFileMenu();
     setupHelpMenu();
     setupEditor("MainWindow.h", Qt::LeftDockWidgetArea);
@@ -30,21 +29,21 @@ void MainWindow::about()
 
 void MainWindow::newFile()
 {
-    _editors.front()->clear();
+    _docks.front()->openNew("","");
 }
 
-CodeEditor* MainWindow::getActiveEditor()
+CodeDock* MainWindow::getActiveDock()
 {
     int active = 0;
-    CodeEditor* editor = nullptr;
-    for (CodeEditor* ed : _editors) {
-        if (ed->getActive() > active) {
-            active = ed->getActive();
-            editor = ed;
+    CodeDock* rtndock = nullptr;
+    for (CodeDock* dock : _docks) {
+        if (dock->getEditor()->getActive() > active) {
+            active = dock->getEditor()->getActive();
+            rtndock = dock;
         }
     }
 
-    return editor;
+    return rtndock;
 }
 
 void MainWindow::openFileDialog()
@@ -58,34 +57,29 @@ void MainWindow::openFileDialog()
     );
 
     if (!fileName.isEmpty()) {
-        CodeEditor* ed = getActiveEditor();
-        if (ed != nullptr)
-            openFileInEditor(fileName, ed);
+        CodeDock* dock = getActiveDock();
+        if (dock != nullptr)
+            openFileInEditor(fileName, dock);
+        else
+            setupEditor(fileName, Qt::LeftDockWidgetArea);
     }
 }
 
-void MainWindow::openFileInEditor(const QString &path, CodeEditor* editor)
+void MainWindow::openFileInEditor(const QString &path, CodeDock* dock)
 {
     QFile file(path);
     if (file.open(QFile::ReadWrite | QFile::Text)) {
-        editor->setPlainText(file.readAll());
-        editor->setFilename(path);
+        dock->openNew(file.readAll(), path);
     }
 }
 
 // TODO ADD open type (split, dir, size, etc)
-CodeEditor* MainWindow::setupEditor(QString filename, Qt::DockWidgetArea area)
+void MainWindow::setupEditor(QString filename, Qt::DockWidgetArea area)
 {
-    QDockWidget *dock;
-    dock = new QDockWidget(this);
-    CodeEditor* ed = new CodeEditor(dock);
-    dock->setWidget(ed);
-
-    _editors.push_back(ed);
-
-    openFileInEditor(filename, ed);
+    CodeDock* dock = new CodeDock(this);
+    _docks.push_back(dock);
+    openFileInEditor(filename, dock);
     addDockWidget(area, dock);
-    return ed;
 }
 
 // TODO figure out why the fuck it's on the right side
@@ -127,52 +121,18 @@ void MainWindow::setupHelpMenu()
 
 void MainWindow::save()
 {
-    QString path = _editors.front()->getFilename();
-    statusBar()->showMessage(tr("Saving File : %1").arg(path), 3 * 1000);
-
-    if (_editors.isEmpty())
+    if (_docks.isEmpty())
         return;
 
-    QFile file(path);
-
-    if (!file.open(QFile::WriteOnly | QFile::Text)) {
-        QMessageBox::warning(this, tr("Dock Widgets"),
-                tr("Cannot write file %1:\n%2.")
-                .arg(path)
-                .arg(file.errorString()));
+    CodeDock* dock = getActiveDock();
+    if ( dock == nullptr )
         return;
-    }
 
-    QTextStream out(&file);
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    out << _editors.front()->toPlainText();
+    bool suc = dock->save();
+    if ( suc )
+        statusBar()->showMessage(tr("Saved '%1'").arg(dock->windowTitle()), 2000);
+    else
+        statusBar()->showMessage(tr("Failed Saving '%1'").arg(dock->windowTitle()), 2000);
     QApplication::restoreOverrideCursor();
-
-    statusBar()->showMessage(tr("Saved '%1'").arg(path), 2000);
-}
-
-void MainWindow::saveas()
-{
-    QString fileName = QFileDialog::getSaveFileName(this,
-                        tr("Choose a file name"), ".",
-                        tr("HTML (*.html *.htm)"));
-
-    if (fileName.isEmpty())
-        return;
-
-    QFile file(fileName);
-    if (!file.open(QFile::WriteOnly | QFile::Text)) {
-        QMessageBox::warning(this, tr("Dock Widgets"),
-                             tr("Cannot write file %1:\n%2.")
-                             .arg(fileName)
-                             .arg(file.errorString()));
-        return;
-    }
-
-    QTextStream out(&file);
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    out << _editors.front()->toPlainText();
-    QApplication::restoreOverrideCursor();
-
-    statusBar()->showMessage(tr("Saved '%1'").arg(fileName), 2000);
 }
