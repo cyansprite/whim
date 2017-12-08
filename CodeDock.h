@@ -7,6 +7,7 @@
 #include <QMessageBox>
 #include <QTextStream>
 #include <QFileDialog>
+
 #include "CodeEditor.h"
 
 class CodeDock : public QDockWidget
@@ -19,9 +20,6 @@ class CodeDock : public QDockWidget
         bool save();
 
         CodeEditor* getEditor() { return _editor; }
-        int getActive(){ return _active; }
-
-        static int ActiveCount;
 
     protected:
         void closeEvent(QCloseEvent *event);
@@ -29,7 +27,6 @@ class CodeDock : public QDockWidget
     private:
         bool areYouSure();
         CodeEditor* _editor;
-        int _active;
 };
 
 #endif

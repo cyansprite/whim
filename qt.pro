@@ -9,5 +9,5 @@ INCLUDEPATH += .
 QMAKE_CXXFLAGS += -std=c++11
 
 # Input
-HEADERS += CodeEditor.h Highlighter.h MainWindow.h CodeDock.h
-SOURCES += CodeEditor.cpp Highlighter.cpp main.cpp MainWindow.cpp CodeDock.cpp
+HEADERS += Whim.h CodeEditor.h Highlighter.h MainWindow.h CodeDock.h
+SOURCES += Whim.cpp CodeEditor.cpp Highlighter.cpp main.cpp MainWindow.cpp CodeDock.cpp

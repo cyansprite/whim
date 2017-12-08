@@ -3,7 +3,8 @@
 
 #include <QPlainTextEdit>
 #include <QObject>
-#include <QDockWidget>
+
+#include "Whim.h"
 #include "Highlighter.h"
 
 class QPaintEvent;
@@ -30,16 +31,10 @@ class CodeEditor : public QPlainTextEdit
             return _filename;
         }
 
-        int getActive(){
-            return _active;
-        }
-
-
-        static int ActiveCount;
-
     protected:
         void resizeEvent(QResizeEvent* event);
-        void focusInEvent(QFocusEvent* event);
+        void keyPressEvent(QKeyEvent* e);
+        void keyReleaseEvent(QKeyEvent* e);
 
     private slots:
         void padForLineNr(int newBlockCount);
@@ -47,12 +42,24 @@ class CodeEditor : public QPlainTextEdit
         void updateLineNr(const QRect &, int);
 
     private:
-        int _active;
-        int _paddingFromLineNr;
+        void normalKeyMode(QKeyEvent* e);
+        void insertKeyMode(QKeyEvent* e);
 
         LineNr* _lineNr;
         Highlighter* _highlighter;
         QString _filename;
+
+        int _paddingFromLineNr;
+
+        bool _shiftHeld;
+        bool _altHeld;
+        bool _ctrlHeld;
+        bool _modHeld; // TODO
+
+        int _count;
+        int _countLimiter;
+        bool _isCounting;
+        QString _keySeq;
 };
 
 class LineNr : public QWidget

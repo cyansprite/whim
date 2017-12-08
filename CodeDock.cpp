@@ -1,4 +1,5 @@
 #include "CodeDock.h"
+#include <iostream>
 
 CodeDock::CodeDock(QWidget* parent) : QDockWidget(parent)
 {
@@ -71,7 +72,7 @@ bool CodeDock::areYouSure()
 
 }
 
-void CodeDock::closeEvent(QCloseEvent *event)
+void CodeDock::closeEvent(QCloseEvent * /*event*/ )
 {
     areYouSure();
     /* if (maybeSave()) {

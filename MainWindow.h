@@ -5,8 +5,8 @@
 #include <QLabel>
 #include <QList>
 
-// #include "CodeEditor.h"
 #include "CodeDock.h"
+#include "Whim.h"
 
 class QTextEdit;
 
@@ -27,9 +27,11 @@ public slots:
     void newFile();
     void openFileDialog();
 
+private slots:
+    void modeChanged(Mode mode);
+
 private:
     void setupEditor(QString filename, Qt::DockWidgetArea area);
-    CodeDock* getActiveDock();
     void setupFileMenu();
     void setupHelpMenu();
     void createStatusBar();
@@ -37,8 +39,7 @@ private:
     int _id;
 
     QList<CodeDock*> _docks;
-    // CodeEditor* _activeEditor;
-
+    CodeDock* _activeDock;
     QLabel* _modeWidget;
 };
 

@@ -1,17 +1,14 @@
 #include <QtGui>
 #include "MainWindow.h"
-// #include <iostream>
+#include "Whim.h"
 
 int main(int argv, char **args)
 {
-    QApplication app(argv, args);
+    Whim app(argv, args, true);
+
     QFile file("/home/joj/.whim.qss");
-    if (file.open(QFile::ReadWrite | QFile::Text)) {
-        // std::cout << "File has been read" << std::endl;
+    if (file.open(QFile::ReadWrite | QFile::Text))
         app.setStyleSheet(file.readAll());
-    } else {
-        // std::cout << "File error" << std::endl;
-    }
 
     // FIXME placeholder :: window size
     MainWindow window;

@@ -1,10 +1,18 @@
 #include <QtGui>
+
 #include "MainWindow.h"
+
 #include <iostream>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    // TODO CONFIGCONFIG
+    // setTabPosition(Qt::DockWidgetAreas areas, QTabWidget::TabPosition tabPosition)
+    // connect(qApp, SIGNAL(focusChanged(QWidget*, QWidget*)), this, SLOT(focusChanged(QWidget*, QWidget*)));
+
+    //... what does this do?
+    setDocumentMode(true);
     _id = -1;
     // Window handles TODO CONFIGCONFIG
     setupFileMenu();
@@ -16,6 +24,9 @@ MainWindow::MainWindow(QWidget *parent)
     _modeWidget->setObjectName("mode");
     createStatusBar();
     setWindowTitle(tr("Whim"));
+
+    connect(qobject_cast<Whim*>(qApp), SIGNAL(modeChanged(Mode)), this, SLOT(modeChanged(Mode)));
+
 }
 
 void MainWindow::about()
@@ -32,22 +43,10 @@ void MainWindow::newFile()
     _docks.front()->openNew("","");
 }
 
-CodeDock* MainWindow::getActiveDock()
-{
-    int active = 0;
-    CodeDock* rtndock = nullptr;
-    for (CodeDock* dock : _docks) {
-        if (dock->getEditor()->getActive() > active) {
-            active = dock->getEditor()->getActive();
-            rtndock = dock;
-        }
-    }
-
-    return rtndock;
-}
-
 void MainWindow::openFileDialog()
 {
+    CodeEditor *ed = qobject_cast<CodeEditor*>(QApplication::focusWidget());
+
     // FIXME fix type
     QString fileName = QFileDialog::getOpenFileName(
         this,
@@ -57,9 +56,8 @@ void MainWindow::openFileDialog()
     );
 
     if (!fileName.isEmpty()) {
-        CodeDock* dock = getActiveDock();
-        if (dock != nullptr)
-            openFileInEditor(fileName, dock);
+        if ( ed )
+            openFileInEditor(fileName, qobject_cast<CodeDock*>(ed->parentWidget()));
         else
             setupEditor(fileName, Qt::LeftDockWidgetArea);
     }
@@ -124,9 +122,10 @@ void MainWindow::save()
     if (_docks.isEmpty())
         return;
 
-    CodeDock* dock = getActiveDock();
-    if ( dock == nullptr )
+    CodeEditor *ed = qobject_cast<CodeEditor*>(QApplication::focusWidget());
+    if ( !ed )
         return;
+    CodeDock* dock = qobject_cast<CodeDock*>(ed->parentWidget());
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
     bool suc = dock->save();
@@ -135,4 +134,9 @@ void MainWindow::save()
     else
         statusBar()->showMessage(tr("Failed Saving '%1'").arg(dock->windowTitle()), 2000);
     QApplication::restoreOverrideCursor();
+}
+
+void MainWindow::modeChanged(Mode mode)
+{
+    _modeWidget->setText(Whim::ModeToText(mode));
 }
