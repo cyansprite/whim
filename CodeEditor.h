@@ -11,6 +11,7 @@ class QPaintEvent;
 class QResizeEvent;
 class QSize;
 class QWidget;
+class QCompleter;
 class LineNr;
 
 class CodeEditor : public QPlainTextEdit
@@ -33,15 +34,22 @@ class CodeEditor : public QPlainTextEdit
 
     protected:
         void resizeEvent(QResizeEvent* event);
+        void focusInEvent(QFocusEvent* event);
         void keyPressEvent(QKeyEvent* e);
         void keyReleaseEvent(QKeyEvent* e);
+        void copy();
+        void paste();
+        void cut();
 
     private slots:
-        void padForLineNr(int newBlockCount);
+        void editorMargins(int newBlockCount);
         void highlightCurrentLine();
         void updateLineNr(const QRect &, int);
+        void modeChanged(Mode oldmode, Mode mode);
+        void insertCompletion(const QString& completion);
 
     private:
+        QString textUnderCursor() const;
         void normalKeyMode(QKeyEvent* e);
         void insertKeyMode(QKeyEvent* e);
 
@@ -60,6 +68,7 @@ class CodeEditor : public QPlainTextEdit
         int _countLimiter;
         bool _isCounting;
         QString _keySeq;
+        QCompleter* _completer;
 };
 
 class LineNr : public QWidget
@@ -74,7 +83,6 @@ class LineNr : public QWidget
         }
 
     protected:
-        // QT
         void paintEvent(QPaintEvent* event) {
             codeEditor->lineNrPaintEvent(event);
         }
@@ -82,5 +90,61 @@ class LineNr : public QWidget
     private:
         CodeEditor* codeEditor;
 };
+
+// TODO see if lineedit will need this
+class PMenu : public QMenu
+{
+    public:
+        PMenu() : QMenu() {
+            setObjectName("pmenu");
+            QGraphicsDropShadowEffect *q = new QGraphicsDropShadowEffect();
+            q->setBlurRadius(3);
+            setGraphicsEffect(q);
+        }
+
+    void keyPressEvent(QKeyEvent* e)
+    {
+        // NOTE: yes I know of e->modifiers() but it can't be trusted.
+        switch( e->key() ) {
+            /*************************************************
+            ***************** REGION: MODS ******************
+            *************************************************/
+            case Qt::Key_Shift:
+                _shiftHeld = true;
+                break;
+            case Qt::Key_Control:
+                _ctrlHeld = true;
+                break;
+            case Qt::Key_Alt:
+                _altHeld = true;
+                break;
+
+            /*************************************************
+            ***************** REGION: MOVE ******************
+            *************************************************/
+            case Qt::Key_C:
+                if ( _ctrlHeld )
+                    close();
+            case Qt::Key_Space:
+                QMenu::keyPressEvent(e);
+            case Qt::Key_N: case Qt::Key_J:
+                if ( _ctrlHeld )
+                    focusNextPrevChild(true);
+                break;
+            case Qt::Key_P: case Qt::Key_K:
+                if ( _ctrlHeld )
+                    focusNextPrevChild(false);
+                break;
+            default:
+                QMenu::keyPressEvent(e);
+                break;
+        }
+    }
+    private:
+        bool _ctrlHeld;
+        bool _shiftHeld;
+        bool _altHeld;
+};
+
 
 #endif

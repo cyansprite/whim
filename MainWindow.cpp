@@ -25,8 +25,19 @@ MainWindow::MainWindow(QWidget *parent)
     createStatusBar();
     setWindowTitle(tr("Whim"));
 
-    connect(qobject_cast<Whim*>(qApp), SIGNAL(modeChanged(Mode)), this, SLOT(modeChanged(Mode)));
+    connect(qobject_cast<Whim*>(qApp), SIGNAL(modeChanged(Mode, Mode)), this, SLOT(modeChanged(Mode, Mode)));
 
+    // TODO make the command line an actual overloaded class...
+    // need custom key commands on pmenu for it, and blah blah.
+    QStringList wordList;
+    wordList << "alpha" << "omega" << "omicron" << "zeta";
+    QLineEdit *lineEdit = new QLineEdit(this);
+    QCompleter *completer = new QCompleter(wordList, this);
+    completer->setCaseSensitivity(Qt::CaseInsensitive);
+    lineEdit->setCompleter(completer);
+    QToolBar* toolbar = new QToolBar("Command");
+    toolbar->addWidget(lineEdit);
+    addToolBar(Qt::BottomToolBarArea, toolbar);
 }
 
 void MainWindow::about()
@@ -95,9 +106,6 @@ void MainWindow::setupFileMenu()
     QMenu *fileMenu = new QMenu(tr("&File"), this);
     menuBar()->addMenu(fileMenu);
 
-    fileMenu->addAction(tr("&New"), this, SLOT(newFile()),
-                        QKeySequence::New);
-
     fileMenu->addAction(tr("&Open..."), this, SLOT(openFileDialog()),
                         QKeySequence::Open);
 
@@ -136,7 +144,7 @@ void MainWindow::save()
     QApplication::restoreOverrideCursor();
 }
 
-void MainWindow::modeChanged(Mode mode)
+void MainWindow::modeChanged(Mode /*oldmode*/, Mode mode)
 {
     _modeWidget->setText(Whim::ModeToText(mode));
 }

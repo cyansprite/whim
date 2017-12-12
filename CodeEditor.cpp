@@ -29,17 +29,17 @@ CodeEditor::CodeEditor(QWidget* parent) : QPlainTextEdit(parent),
 
     // SIGNALS and SLOTS
     // TODO SIGNALS
-    connect(this, SIGNAL(blockCountChanged(int)), this, SLOT(padForLineNr(int)));
+    connect(this, SIGNAL(blockCountChanged(int)), this, SLOT(editorMargins(int)));
     connect(this, SIGNAL(updateRequest(QRect, int)), this, SLOT(updateLineNr(QRect, int)));
     connect(this, SIGNAL(cursorPositionChanged()), this, SLOT(highlightCurrentLine()));
+    connect(qobject_cast<Whim*>(qApp), SIGNAL(modeChanged(Mode,Mode)), this, SLOT(modeChanged(Mode,Mode)));
 
-    padForLineNr(0);
+    editorMargins(0);
 
     // TODO CONFIGCONFIG
     highlightCurrentLine();
 
     // TODO CONFIGCONFIG
-    // will have to do what mode it is in
     setCursorWidth(fontMetrics().width(QLatin1Char('a')));
 
     // TODO CONFIGCONFIG
@@ -48,6 +48,16 @@ CodeEditor::CodeEditor(QWidget* parent) : QPlainTextEdit(parent),
 
     // TODO CONFIGCONFIG
     setLineWrapMode(QPlainTextEdit::NoWrap);
+
+    _completer = new QCompleter(this);
+    _completer->setModelSorting(QCompleter::UnsortedModel);
+    _completer->setCaseSensitivity(Qt::CaseInsensitive);
+    _completer->setWrapAround(false);
+    _completer->setWidget(this);
+    // TODO CONFIGCONFIG
+    _completer->setCompletionMode(QCompleter::PopupCompletion);
+    _completer->setCaseSensitivity(Qt::CaseInsensitive);
+    connect(_completer, SIGNAL(activated(QString)), this, SLOT(insertCompletion(QString)));
 
     // TODO CONFIGCONFIG 
     // setTabStopWidth(int width);
@@ -60,18 +70,11 @@ CodeEditor::CodeEditor(QWidget* parent) : QPlainTextEdit(parent),
     // TODO Keyboard commands
     // TODO NORMAL MODE
     // c-y/e QPlainTextEdit::scrollContentsBy(int dx, int dy)
-    // zz -> QPlainTextEdit::centerCursor()
-    // r  -> QPlainTextEdit::redo() -> might need to query QPlainTextEdit::redoAvailable(bool available)
-    // u  -> QPlainTextEdit::undo() -> might need to query QPlainTextEdit::undoAvailable(bool available)
     // d  -> QPlainTextEdit::cut()
     // p  -> QPlainTextEdit::paste()
     // y  -> QPlainTextEdit::copy(), need registers as well
     // as well as a list kind of like my plugin extract
     // will probably need -> QPlainTextEdit::copyAvailable
-
-    // TODO Insert mode
-    // c-w   Delete word backwards in insert mode
-    // c-u   Delete line in insert mode
 
     // TODO Multiple cursors anyone ? Need to use with regex too.
     // QList<QTextEdit::ExtraSelection> QPlainTextEdit::extraSelections() const
@@ -90,17 +93,16 @@ CodeEditor::CodeEditor(QWidget* parent) : QPlainTextEdit(parent),
 
 }
 
-// TODO fix this lame ass function
 int CodeEditor::lineNrAreaWidth()
 {
     int digs = std::log10(blockCount()) + 1;
     int space = fontMetrics().width(QLatin1Char('9')) * digs;
-    return space;
+    return space * 1.25f;
 }
 
-void CodeEditor::padForLineNr(int /*newBlockCount*/)
+void CodeEditor::editorMargins(int /*newBlockCount*/)
 {
-    setViewportMargins(lineNrAreaWidth() + _paddingFromLineNr, 0, 0, 0);
+    setViewportMargins(lineNrAreaWidth(), 0, 0, 0);
 }
 
 void CodeEditor::updateLineNr(const QRect &rect, int dy)
@@ -111,24 +113,31 @@ void CodeEditor::updateLineNr(const QRect &rect, int dy)
         _lineNr->update(0, rect.y(), _lineNr->width(), rect.height());
 
     if (rect.contains(viewport()->rect()))
-        padForLineNr(0);
+        editorMargins(0);
 }
 
 void CodeEditor::highlightCurrentLine()
 {
     QList<QTextEdit::ExtraSelection> extraSelections;
 
+    QTextEdit::ExtraSelection selection;
+
+    // TODO Read only and non-readonly CONFIGCONFIG
+    QColor lineColor;
     if (!isReadOnly()) {
-        QTextEdit::ExtraSelection selection;
-
-        QColor lineColor = QColor(Qt::yellow).lighter(190);
-
-        selection.format.setBackground(lineColor);
-        selection.format.setProperty(QTextFormat::FullWidthSelection, true);
-        selection.cursor = textCursor();
-        selection.cursor.clearSelection();
-        extraSelections.append(selection);
+        if ( qobject_cast<Whim*>(qApp)->getMode() == Insert )
+            lineColor = QColor(Qt::cyan).lighter(190);
+        else if ( qobject_cast<Whim*>(qApp)->getMode() == Normal )
+            lineColor = QColor(Qt::blue).lighter(190);
     }
+    else
+        lineColor = QColor(Qt::red ).lighter(190);
+
+    selection.format.setBackground(lineColor);
+    selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+    selection.cursor = textCursor();
+    selection.cursor.clearSelection();
+    extraSelections.append(selection);
 
     setExtraSelections(extraSelections);
 }
@@ -136,24 +145,33 @@ void CodeEditor::highlightCurrentLine()
 void CodeEditor::lineNrPaintEvent(QPaintEvent *event)
 {
     QPainter painter(_lineNr);
-    painter.fillRect(event->rect(), QColor(Qt::lightGray).lighter(149));
+    QStyleOptionButton option;
+    option.initFrom(this);
+    painter.fillRect(event->rect(), option.palette.color(QPalette::Background).darker(125));
+
     QTextBlock block = firstVisibleBlock();
     int blockNumber = block.blockNumber();
     int top = (int) blockBoundingGeometry(block).translated(contentOffset()).top();
     int bottom = top + (int) blockBoundingRect(block).height();
+
     while (block.isValid() && top <= event->rect().bottom()) {
-        if (block.isVisible() && bottom >= event->rect().top()) {
-            QString number = QString::number(blockNumber + 1);
-            painter.setPen(Qt::black);
-            painter.drawText(0, top, _lineNr->width(), fontMetrics().height(),
-                    Qt::AlignRight, number);
+        // TODO line nr color , and linenr padding CONFIGCONFIG
+        QString number = QString::number(blockNumber + 1);
+        if (blockNumber ==  textCursor().block().blockNumber()) {
+            painter.fillRect(0, top, _lineNr->width() / 1.25f, fontMetrics().height(), option.palette.color(QPalette::Background));
+            painter.setPen(QColor(Qt::black));
         }
+        else
+            painter.setPen(option.palette.color(QPalette::Foreground));
+        painter.drawText(0, top, _lineNr->width() / 1.25f, fontMetrics().height(), Qt::AlignRight, number);
 
         block = block.next();
         top = bottom;
         bottom = top + (int) blockBoundingRect(block).height();
         ++blockNumber;
     }
+
+    painter.fillRect(_lineNr->width() - _paddingFromLineNr, event->rect().y(), _paddingFromLineNr, event->rect().height(),option.palette.color(QPalette::Background).darker(110));
 }
 
 // QT Events
@@ -167,7 +185,6 @@ void CodeEditor::resizeEvent(QResizeEvent* e)
 
 void CodeEditor::keyReleaseEvent(QKeyEvent* e)
 {
-
     switch( e->key() )
     {
         // REGION: Mods
@@ -175,10 +192,10 @@ void CodeEditor::keyReleaseEvent(QKeyEvent* e)
             _shiftHeld = false;
             break;
         case Qt::Key_Control:
-            _shiftHeld = false;
+            _ctrlHeld = false;
             break;
         case Qt::Key_Alt:
-            _shiftHeld = false;
+            _altHeld = false;
             break;
 
         // ENDREGION: Mods
@@ -190,30 +207,144 @@ void CodeEditor::keyReleaseEvent(QKeyEvent* e)
 
 void CodeEditor::keyPressEvent(QKeyEvent* e)
 {
+    bool cont = false;
     // TODO TOO much to list :)
+    switch( e->key() ) {
+        /*************************************************
+         ***************** REGION: MODS ******************
+         *************************************************/
+        case Qt::Key_Shift:
+            _shiftHeld = true;
+            break;
+        case Qt::Key_Control:
+            _ctrlHeld = true;
+            break;
+        case Qt::Key_Alt:
+            _altHeld = true;
+            break;
+        default:
+            cont = true;
+    }
+
+    if ( !cont )
+        return;
+
     if ( qobject_cast<Whim*>(qApp)->getMode() == Normal)
         normalKeyMode(e);
     else if ( qobject_cast<Whim*>(qApp)->getMode() == Insert)
         insertKeyMode(e);
+
 }
 
+// add to list
+void CodeEditor::copy()
+{
+    QPlainTextEdit::copy();
+}
 
+void CodeEditor::cut()
+{
+    QPlainTextEdit::cut();
+}
+
+void CodeEditor::paste()
+{
+    QPlainTextEdit::paste();
+}
+
+// TODO move to a dictionary or something, with std::functionals or something.
 void CodeEditor::insertKeyMode(QKeyEvent* e)
 {
+    QTextCursor cursor(textCursor());
+    bool sendUp = true;
     switch( e->key() )
     {
         case Qt::Key_Escape:
-            qobject_cast<Whim*>(qApp)->changeMode(Normal);
-        default:
-            QPlainTextEdit::keyPressEvent(e);
+            qobject_cast<Whim*>(qApp)->changeMode(Insert, Normal);
+            sendUp = false;
             break;
+        case Qt::Key_N:
+            if ( _ctrlHeld ) {
+            }
+            break;
+        case Qt::Key_C:
+            if ( _ctrlHeld ) {
+                qobject_cast<Whim*>(qApp)->changeMode(Insert, Normal);
+                sendUp = false;
+            }
+            break;
+        case Qt::Key_V:
+            if ( _ctrlHeld ) {
+            }
+            break;
+        case Qt::Key_W:
+            if ( _ctrlHeld ) {
+                cursor.movePosition(QTextCursor::PreviousWord, QTextCursor::KeepAnchor);
+                cursor.removeSelectedText();
+                sendUp = false;
+            }
+
+            break;
+        case Qt::Key_U:
+            if ( _ctrlHeld ) {
+                cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
+                cursor.removeSelectedText();
+                sendUp = false;
+            }
+            break;
+        default:
+            break;
+    }
+
+    if ( sendUp ) {
+        // Completer
+        if (_completer && _completer->popup()->isVisible()) {
+            // The following keys are forwarded by the completer to the widget
+            switch (e->key()) {
+                case Qt::Key_Enter:
+                case Qt::Key_Return:
+                case Qt::Key_Escape:
+                case Qt::Key_Tab:
+                case Qt::Key_Backtab:
+                    e->ignore();
+                    return; // let the completer do default behavior
+                default:
+                    break;
+            }
+        }
+
+        QString buffer = toPlainText();
+        QStringList list(buffer.split(QRegExp("\\s+|\\W"), QString::SkipEmptyParts));
+        list.removeDuplicates();
+        _completer->setModel(new QStringListModel(list));
+
+        QPlainTextEdit::keyPressEvent(e);
+
+        static QString eow("~!@#$%^&*()_+{}|:\"<>?,./;'[]\\-="); // end of word
+        QString completionPrefix = textUnderCursor();
+
+        std::cout << completionPrefix.toStdString() << std::endl;
+
+        // TODO < amt
+        if (completionPrefix.length() < 2 || eow.contains(e->text().right(1))) {
+            _completer->popup()->hide();
+            return;
+        }
+
+        if (completionPrefix != _completer->completionPrefix()) {
+            _completer->setCompletionPrefix(completionPrefix);
+            _completer->popup()->setCurrentIndex(_completer->completionModel()->index(0, 0));
+        }
+
+        QRect cr = cursorRect();
+        cr.setWidth(_completer->popup()->sizeHintForColumn(0) + _completer->popup()->verticalScrollBar()->sizeHint().width());
+        _completer->complete(cr); // popup it up!
     }
 }
 
 void CodeEditor::normalKeyMode(QKeyEvent* e)
 {
     QTextCursor cursor(textCursor());
-    cursor.beginEditBlock();
     /* QT text cursor movements reference
      -- lol why
      QTextCursor::NoMove            0   Keep the cursor where it is
@@ -313,11 +444,8 @@ void CodeEditor::normalKeyMode(QKeyEvent* e)
                 }
             }
             break;
-        // TODO subject to change
         case Qt::Key_S:
             if ( !_shiftHeld ) {
-                while (_count--)
-                    cursor.movePosition(QTextCursor::StartOfWord);
             }
             break;
 
@@ -331,19 +459,6 @@ void CodeEditor::normalKeyMode(QKeyEvent* e)
             } else {
                 cursor.movePosition(QTextCursor::End);
             }
-            break;
-
-        /*************************************************
-         ***************** REGION: MODS ******************
-         *************************************************/
-        case Qt::Key_Shift:
-            _shiftHeld = true;
-            break;
-        case Qt::Key_Control:
-            _ctrlHeld = true;
-            break;
-        case Qt::Key_Alt:
-            _altHeld = true;
             break;
 
 
@@ -368,21 +483,60 @@ void CodeEditor::normalKeyMode(QKeyEvent* e)
             std::cout << _count << " - " << _countLimiter << std::endl;
             break;
 
+     // QTextCursor::StartOfLine       3   Move to the start of the current line.
+     // QTextCursor::EndOfLine         13  Move to the end of the current line.
         /*************************************************
          ***************** REGION: MODE ******************
          *************************************************/
+        case Qt::Key_A:
+            if ( !_shiftHeld ) {
+            } else {
+                cursor.movePosition(QTextCursor::EndOfLine);
+                qobject_cast<Whim*>(qApp)->changeMode(Normal, Insert);
+            }
+            break;
+        case Qt::Key_O:
+            while ( _count-- )
+                if ( !_shiftHeld ) {
+                    cursor.movePosition(QTextCursor::Down);
+                    qobject_cast<Whim*>(qApp)->changeMode(Normal, Insert);
+                    setTextCursor(cursor);
+                    insertPlainText("\n");
+                    cursor.movePosition(QTextCursor::Up);
+                } else {
+                    qobject_cast<Whim*>(qApp)->changeMode(Normal, Insert);
+                    insertPlainText("\n");
+                    cursor.movePosition(QTextCursor::Up);
+                }
+            break;
         case Qt::Key_I:
             if ( !_shiftHeld ) {
-                qobject_cast<Whim*>(qApp)->changeMode(Insert);
+                qobject_cast<Whim*>(qApp)->changeMode(Normal, Insert);
+            } else {
+                cursor.movePosition(QTextCursor::StartOfLine);
+                qobject_cast<Whim*>(qApp)->changeMode(Normal, Insert);
             }
             break;
 
         /*************************************************
          ***************** REGION: EDIT ******************
          *************************************************/
+        case Qt::Key_D:
+            if ( !_shiftHeld ) {
+                if ( _ctrlHeld ) {
+                    // cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, _lastBlock - firstVisibleBlock().blockNumber() );
+                } else {
+                    // undo();
+                }
+            }
+            break;
         case Qt::Key_U:
             if ( !_shiftHeld ) {
-                undo();
+                if ( _ctrlHeld ) {
+                    // cursor.movePosition(QTextCursor::Up, QTextCursor::MoveAnchor, _lastBlock - firstVisibleBlock().blockNumber() );
+                } else {
+                    undo();
+                }
             }
             break;
         case Qt::Key_R:
@@ -417,5 +571,49 @@ void CodeEditor::normalKeyMode(QKeyEvent* e)
     }
 
     setTextCursor(cursor);
-    cursor.endEditBlock();
+}
+
+void CodeEditor::modeChanged(Mode oldmode, Mode mode)
+{
+    highlightCurrentLine();
+    if (oldmode == Insert) {
+        _completer->popup()->hide();
+    }
+
+    switch(mode) {
+        case Normal:
+            setCursorWidth(fontMetrics().width(QLatin1Char('a')) - 1);
+            break;
+        case Insert:
+            setCursorWidth(2);
+            break;
+        default:
+            break;
+    }
+}
+
+void CodeEditor::insertCompletion(const QString& completion)
+{
+    if (_completer->widget() != this)
+        return;
+    QTextCursor tc = textCursor();
+    int extra = completion.length() - _completer->completionPrefix().length();
+    tc.movePosition(QTextCursor::Left);
+    tc.movePosition(QTextCursor::EndOfWord);
+    tc.insertText(completion.right(extra));
+    setTextCursor(tc);
+}
+
+QString CodeEditor::textUnderCursor() const
+{
+    QTextCursor tc = textCursor();
+    tc.select(QTextCursor::WordUnderCursor);
+    return tc.selectedText();
+}
+
+void CodeEditor::focusInEvent(QFocusEvent *e)
+{
+    if (_completer)
+        _completer->setWidget(this);
+    QPlainTextEdit::focusInEvent(e);
 }

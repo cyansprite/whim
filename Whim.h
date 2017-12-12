@@ -13,17 +13,18 @@ class Whim : public QApplication
 public:
     Whim(int & argc, char ** argv, bool GUIenabled);
     Mode getMode() { return _mode; }
-    void changeMode(Mode mode);
+    void changeMode(Mode oldmode, Mode mode);
 
     static QString ModeToText(Mode mode);
 
     signals:
-        void modeChanged(Mode mode);
+        void modeChanged(Mode oldmode, Mode mode);
 
 private:
     int _argc;
     char** argv;
     Mode _mode;
+    Mode _oldmode;
 };
 
 #endif

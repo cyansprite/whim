@@ -28,7 +28,7 @@ public slots:
     void openFileDialog();
 
 private slots:
-    void modeChanged(Mode mode);
+    void modeChanged(Mode oldmode, Mode mode);
 
 private:
     void setupEditor(QString filename, Qt::DockWidgetArea area);
